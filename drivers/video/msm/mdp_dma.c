@@ -482,8 +482,9 @@ void mdp_dma2_update(struct msm_fb_data_type *mfd)
 #endif
 {
 	unsigned long flag;
-	static int first_vsync;
-	int need_wait = 0;
+
+	if (!mfd)
+		return;
 
 	down(&mfd->dma->mutex);
 	if ((mfd) && (mfd->panel_power_on)) {
@@ -501,19 +502,11 @@ void mdp_dma2_update(struct msm_fb_data_type *mfd)
 		mfd->ibuf_flushed = TRUE;
 		mdp_dma2_update_lcd(mfd);
 
+		spin_lock_irqsave(&mdp_spin_lock, flag);
 		mdp_enable_irq(MDP_DMA2_TERM);
 		mfd->dma->busy = TRUE;
 		INIT_COMPLETION(mfd->dma->comp);
-		INIT_COMPLETION(vsync_cntrl.vsync_comp);
-		if (!vsync_cntrl.vsync_irq_enabled &&
-				vsync_cntrl.disabled_clocks) {
-			MDP_OUTP(MDP_BASE + 0x021c, 0x10); /* read pointer */
-			outp32(MDP_INTR_CLEAR, MDP_PRIM_RDPTR);
-			mdp_intr_mask |= MDP_PRIM_RDPTR;
-			outp32(MDP_INTR_ENABLE, mdp_intr_mask);
-			mdp_enable_irq(MDP_VSYNC_TERM);
-			vsync_cntrl.vsync_dma_enabled = 1;
-		}
+
 		spin_unlock_irqrestore(&mdp_spin_lock, flag);
 		/* schedule DMA to start */
 		mdp_dma_schedule(mfd, MDP_DMA2_TERM);
