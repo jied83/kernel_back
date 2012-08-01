@@ -3568,9 +3568,7 @@ static int msmfb_notify_update(struct fb_info *info, unsigned long *argp)
 		ret = wait_for_completion_interruptible_timeout(
 		&mfd->msmfb_no_update_notify, 4*HZ);
 	}
-	if (ret == 0)
-		ret = -ETIMEDOUT;
-	return (ret > 0) ? 0 : ret;
+	return (ret > 0) ? 0 : -1;
 }
 
 static int msmfb_handle_pp_ioctl(struct msm_fb_data_type *mfd,
