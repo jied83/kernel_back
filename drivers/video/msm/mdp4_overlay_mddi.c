@@ -333,23 +333,7 @@ int mdp4_mddi_pipe_commit(void)
 		vctrl->blt_change = 0;
 	}
 
-	pipe = vp->plist;
-	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
-		if (pipe->pipe_used) {
-			cnt++;
-			real_pipe = mdp4_overlay_ndx2pipe(pipe->pipe_ndx);
-			if (real_pipe && real_pipe->pipe_used) {
-				/* pipe not unset */
-			mdp4_overlay_vsync_commit(pipe);
-			}
-			/* free previous iommu to freelist
-			* which will be freed at next
-			* pipe_commit
-			*/
-			mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 0);
-			pipe->pipe_used = 0; /* clear */
-		}
-	}
+	mdp4_mixer_stage_up(pipe, 1);
 
 	mdp4_mixer_stage_commit(mixer);
 
