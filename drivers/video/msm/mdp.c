@@ -1280,22 +1280,12 @@ static void vsync_isr_handler(void)
 }
 #endif
 
-ssize_t mdp_dma_show_event(struct device *dev,
-		struct device_attribute *attr, char *buf)
+#ifdef CONFIG_FB_MSM_MDP303
+/* vsync_isr_handler: Called from isr context*/
+static void vsync_isr_handler(void)
 {
-	ssize_t ret = 0;
-
-	if (atomic_read(&vsync_cntrl.suspend) > 0 ||
-		atomic_read(&vsync_cntrl.vsync_resume) == 0)
-		return 0;
-
-	INIT_COMPLETION(vsync_cntrl.vsync_wait);
-
-	wait_for_completion(&vsync_cntrl.vsync_wait);
-	ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu",
-			ktime_to_ns(vsync_cntrl.vsync_time));
-	buf[strlen(buf) + 1] = '\0';
-	return ret;
+	vsync_cntrl.vsync_time = ktime_get();
+	schedule_work(&(vsync_cntrl.vsync_work));
 }
 
 /* Returns < 0 on error, 0 on timeout, or > 0 on successful wait */
@@ -1740,8 +1730,7 @@ irqreturn_t mdp_isr(int irq, void *ptr)
 	char *base_addr;
 	int i, ret;
 #endif
-	int vsync_isr, disabled_clocks;
-	unsigned long flag;
+	int vsync_isr;
 	/* Ensure all the register write are complete */
 	mb();
 
@@ -1764,25 +1753,19 @@ irqreturn_t mdp_isr(int irq, void *ptr)
 	if (mdp_interrupt & MDP_PRIM_RDPTR) {
 		spin_lock_irqsave(&mdp_spin_lock, flag);
 		vsync_isr = vsync_cntrl.vsync_irq_enabled;
-		disabled_clocks = vsync_cntrl.disabled_clocks;
-		if ((!vsync_isr && !vsync_cntrl.disabled_clocks)
-			|| (!vsync_isr && vsync_cntrl.vsync_dma_enabled)) {
+		if (!vsync_isr) {
 			mdp_intr_mask &= ~MDP_PRIM_RDPTR;
 			outp32(MDP_INTR_ENABLE, mdp_intr_mask);
-			mdp_disable_irq_nosync(MDP_VSYNC_TERM);
-			vsync_cntrl.disabled_clocks = 1;
-		} else if (vsync_isr) {
-			vsync_isr_handler();
 		}
-		vsync_cntrl.vsync_dma_enabled = 0;
 		spin_unlock_irqrestore(&mdp_spin_lock, flag);
 
-		complete(&vsync_cntrl.vsync_comp);
-		if (!vsync_isr && !disabled_clocks)
+		if (vsync_isr) {
+			vsync_isr_handler();
+		} else {
 			mdp_pipe_ctrl(MDP_CMD_BLOCK,
 				MDP_BLOCK_POWER_OFF, TRUE);
-
-		complete_all(&vsync_cntrl.vsync_wait);
+			complete(&vsync_cntrl.vsync_wait);
+		}
 	}
 
 		/* DMA3 TV-Out Start */
@@ -1847,11 +1830,13 @@ irqreturn_t mdp_isr(int irq, void *ptr)
 			}
 			spin_unlock_irqrestore(&mdp_spin_lock, flag);
 
-			if (!vsync_isr)
+			if (vsync_isr) {
+				vsync_isr_handler();
+			} else {
 				mdp_pipe_ctrl(MDP_CMD_BLOCK,
 					MDP_BLOCK_POWER_OFF, TRUE);
-
-			complete_all(&vsync_cntrl.vsync_wait);
+				complete(&vsync_cntrl.vsync_wait);
+			}
 		}
 
 		/* DMA2 LCD-Out Complete */
@@ -1977,9 +1962,8 @@ static void mdp_drv_init(void)
 	for (i = 0; i < MDP_MAX_BLOCK; i++) {
 		atomic_set(&mdp_block_power_cnt[i], 0);
 	}
-	vsync_cntrl.disabled_clocks = 1;
+	INIT_WORK(&(vsync_cntrl.vsync_work), send_vsync_work);
 	init_completion(&vsync_cntrl.vsync_wait);
-	atomic_set(&vsync_cntrl.vsync_resume, 1);
 #ifdef MSM_FB_ENABLE_DBGFS
 	{
 		struct dentry *root;

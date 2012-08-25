@@ -542,16 +542,11 @@ void mdp_dma2_update(struct msm_fb_data_type *mfd)
 void mdp_dma_vsync_ctrl(int enable)
 {
 	unsigned long flag;
-	int disabled_clocks;
 	if (vsync_cntrl.vsync_irq_enabled == enable)
 		return;
 
 	spin_lock_irqsave(&mdp_spin_lock, flag);
-	if (!enable)
-		INIT_COMPLETION(vsync_cntrl.vsync_wait);
-
 	vsync_cntrl.vsync_irq_enabled = enable;
-	disabled_clocks = vsync_cntrl.disabled_clocks;
 	spin_unlock_irqrestore(&mdp_spin_lock, flag);
 
 	if (enable && disabled_clocks)
@@ -561,13 +556,16 @@ void mdp_dma_vsync_ctrl(int enable)
 	if (enable && vsync_cntrl.disabled_clocks &&
 			!vsync_cntrl.vsync_dma_enabled) {
 		MDP_OUTP(MDP_BASE + 0x021c, 0x10); /* read pointer */
+		spin_lock_irqsave(&mdp_spin_lock, flag);
 		outp32(MDP_INTR_CLEAR, MDP_PRIM_RDPTR);
 		mdp_intr_mask |= MDP_PRIM_RDPTR;
 		outp32(MDP_INTR_ENABLE, mdp_intr_mask);
 		mdp_enable_irq(MDP_VSYNC_TERM);
-		vsync_cntrl.disabled_clocks = 0;
-	} else if (enable && vsync_cntrl.disabled_clocks) {
-		vsync_cntrl.disabled_clocks = 0;
+		spin_unlock_irqrestore(&mdp_spin_lock, flag);
+	} else {
+		INIT_COMPLETION(vsync_cntrl.vsync_wait);
+		wait_for_completion(&vsync_cntrl.vsync_wait);
+		mdp_disable_irq(MDP_VSYNC_TERM);
 	}
 	spin_unlock_irqrestore(&mdp_spin_lock, flag);
 	if (vsync_cntrl.vsync_irq_enabled &&
