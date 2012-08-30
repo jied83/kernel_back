@@ -679,9 +679,10 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	atomic_set(&vctrl->suspend, 1);
 	atomic_set(&vctrl->vsync_resume, 0);
 
-	msleep(20);	/* >= 17 ms */
 
 	complete_all(&vctrl->vsync_comp);
+
+	msleep(20);	/* >= 17 ms */
 
 	if (pipe->ov_blt_addr) {
 		spin_lock_irqsave(&vctrl->spin_lock, flags);
