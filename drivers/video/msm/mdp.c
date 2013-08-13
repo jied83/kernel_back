@@ -1272,13 +1272,17 @@ error:
 }
 #endif
 
-#ifdef CONFIG_FB_MSM_MDP303
-/* vsync_isr_handler: Called from isr context*/
-static void vsync_isr_handler(void)
+static void send_vsync_work(struct work_struct *work)
 {
-	vsync_cntrl.vsync_time = ktime_get();
+	char buf[64];
+	char *envp[2];
+
+	snprintf(buf, sizeof(buf), "VSYNC=%llu",
+			ktime_to_ns(vsync_cntrl.vsync_time));
+	envp[0] = buf;
+	envp[1] = NULL;
+	kobject_uevent_env(&(vsync_cntrl.dev->kobj), KOBJ_CHANGE, envp);
 }
-#endif
 
 #ifdef CONFIG_FB_MSM_MDP303
 /* vsync_isr_handler: Called from isr context*/
@@ -2048,13 +2052,12 @@ static struct platform_driver mdp_driver = {
 static int mdp_off(struct platform_device *pdev)
 {
 	int ret = 0;
+
 	struct msm_fb_data_type *mfd = platform_get_drvdata(pdev);
 
 	pr_debug("%s:+\n", __func__);
 	mdp_histogram_ctrl_all(FALSE);
-	atomic_set(&vsync_cntrl.suspend, 1);
-	atomic_set(&vsync_cntrl.vsync_resume, 0);
-	complete_all(&vsync_cntrl.vsync_wait);
+
 	mdp_clk_ctrl(1);
 	if (mfd->panel.type == MIPI_CMD_PANEL)
 		mdp4_dsi_cmd_off(pdev);
@@ -2064,8 +2067,6 @@ static int mdp_off(struct platform_device *pdev)
 			mfd->panel.type == LCDC_PANEL ||
 			mfd->panel.type == LVDS_PANEL)
 		mdp4_lcdc_off(pdev);
-	else if (mfd->panel.type == MDDI_PANEL)
-		mdp4_mddi_off(pdev);
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	ret = panel_next_off(pdev);
@@ -2111,20 +2112,15 @@ static int mdp_on(struct platform_device *pdev)
 				mfd->panel.type == LCDC_PANEL ||
 				mfd->panel.type == LVDS_PANEL) {
 			mdp4_lcdc_on(pdev);
-		} else if (mfd->panel.type == MDDI_PANEL) {
-			mdp_vsync_cfg_regs(mfd, FALSE);
-			mdp4_mddi_on(pdev);
 		}
 
 		mdp_clk_ctrl(0);
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	}
 
-	if (mdp_rev == MDP_REV_303 && mfd->panel.type == MIPI_CMD_PANEL) {
-
+	if ((mdp_rev == MDP_REV_303) &&
+			(mfd->panel.type == MIPI_CMD_PANEL))
 		vsync_cntrl.dev = mfd->fbi->dev;
-		atomic_set(&vsync_cntrl.suspend, 1);
-	}
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	ret = panel_next_on(pdev);
