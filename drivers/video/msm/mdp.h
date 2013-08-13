@@ -46,6 +46,10 @@ extern struct mdp_csc_cfg mdp_csc_convert[4];
 
 extern struct workqueue_struct *mdp_hist_wq;
 
+extern int mdp_lut_i;
+extern int mdp_lut_push;
+extern int mdp_lut_push_i;
+extern struct mutex mdp_lut_push_sem;
 extern uint32 mdp_intr_mask;
 
 #define MDP4_REVISION_V1		0
@@ -767,7 +771,7 @@ void mdp_lcdc_update(struct msm_fb_data_type *mfd);
 int mdp_dsi_video_on(struct platform_device *pdev);
 int mdp_dsi_video_off(struct platform_device *pdev);
 void mdp_dsi_video_update(struct msm_fb_data_type *mfd);
-void mdp3_dsi_cmd_dma_busy_wait(struct msm_fb_data_type *mfd);
+void mdp3_dsi_cmd_dma_busy_wait(struct msm_fb_data_type *mfd)
 static inline int mdp4_dsi_cmd_off(struct platform_device *pdev)
 {
 	return 0;
@@ -777,10 +781,6 @@ static inline int mdp4_dsi_video_off(struct platform_device *pdev)
 	return 0;
 }
 static inline int mdp4_lcdc_off(struct platform_device *pdev)
-{
-	return 0;
-}
-static inline int mdp4_mddi_off(struct platform_device *pdev)
 {
 	return 0;
 }
@@ -796,19 +796,6 @@ static inline int mdp4_lcdc_on(struct platform_device *pdev)
 {
 	return 0;
 }
-static inline int mdp4_mddi_on(struct platform_device *pdev)
-{
-	return 0;
-}
-#endif
-
-
-#ifndef CONFIG_FB_MSM_MDDI
-//static inline void mdp4_mddi_rdptr_init(int cndx)
-//{
-//	/* empty */
-//}
-
 #endif
 
 void set_cont_splashScreen_status(int);
@@ -892,6 +879,7 @@ static inline int mdp4_overlay_dsi_state_get(void)
 }
 #endif
 
+void mdp_vid_quant_set(void);
 #ifndef CONFIG_FB_MSM_MDP40
 static inline void mdp_dsi_cmd_overlay_suspend(struct msm_fb_data_type *mfd)
 {
@@ -904,14 +892,6 @@ static inline int msmfb_overlay_vsync_ctrl(struct fb_info *info,
 }
 #endif
 
-#ifdef CONFIG_FB_MSM_DTV
-void mdp_vid_quant_set(void);
-#else
-static inline void mdp_vid_quant_set(void)
-{
-	/* empty */
-}
-#endif
 int mdp_ppp_v4l2_overlay_set(struct fb_info *info, struct mdp_overlay *req);
 int mdp_ppp_v4l2_overlay_clear(void);
 int mdp_ppp_v4l2_overlay_play(struct fb_info *info,

@@ -3,7 +3,7 @@
  * Core MSM framebuffer driver.
  *
  * Copyright (C) 2007 Google Incorporated
- * Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -491,10 +491,10 @@ static int msm_fb_remove(struct platform_device *pdev)
 
 	msm_fb_remove_sysfs(pdev);
 
-	pm_runtime_disable(mfd->fbi->dev);
-
 	if (!mfd)
 		return -ENODEV;
+
+	pm_runtime_disable(mfd->fbi->dev);
 
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
@@ -658,6 +658,9 @@ static int msm_fb_resume_sub(struct msm_fb_data_type *mfd)
 				      mfd->op_enable);
 		if (ret)
 			MSM_FB_INFO("msm_fb_resume: can't turn on display!\n");
+	} else {
+		if (pdata->power_ctrl)
+			pdata->power_ctrl(TRUE);
 	}
 
 	return ret;
@@ -3266,11 +3269,25 @@ static int msmfb_overlay_play_wait(struct fb_info *info, unsigned long *argp)
 	return ret;
 }
 
+static int msmfb_overlay_commit(struct fb_info *info, unsigned long *argp)
+{
+	int ret, ndx;
+
+	ret = copy_from_user(&ndx, argp, sizeof(ndx));
+	if (ret) {
+		pr_err("%s: ioctl failed\n", __func__);
+		return ret;
+	}
+
+	return mdp4_overlay_commit(info, ndx);
+}
+
 static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 {
 	int	ret;
 	struct msmfb_overlay_data req;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+	struct msm_fb_panel_data *pdata;
 
 	if (mfd->overlay_play_enable == 0)	/* nothing to do */
 		return 0;
@@ -3571,8 +3588,7 @@ static int msmfb_notify_update(struct fb_info *info, unsigned long *argp)
 	return (ret > 0) ? 0 : -1;
 }
 
-static int msmfb_handle_pp_ioctl(struct msm_fb_data_type *mfd,
-						struct msmfb_mdp_pp *pp_ptr)
+static int msmfb_handle_pp_ioctl(struct msmfb_mdp_pp *pp_ptr)
 {
 	int ret = -1;
 
@@ -3680,6 +3696,11 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 	case MSMFB_OVERLAY_UNSET:
 		ret = msmfb_overlay_unset(info, argp);
+		break;
+	case MSMFB_OVERLAY_COMMIT:
+		down(&msm_fb_ioctl_ppp_sem);
+		ret = msmfb_overlay_commit(info, argp);
+		up(&msm_fb_ioctl_ppp_sem);
 		break;
 	case MSMFB_OVERLAY_PLAY:
 		ret = msmfb_overlay_play(info, argp);
@@ -3946,7 +3967,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (ret)
 			return ret;
 
-		ret = msmfb_handle_pp_ioctl(mfd, &mdp_pp);
+		ret = msmfb_handle_pp_ioctl(&mdp_pp);
 		break;
 /* start of adding lcd cmd : (lcd)marh 2012.3.21 */
 #ifdef CONFIG_F_SKYDISP_LCD_RESET

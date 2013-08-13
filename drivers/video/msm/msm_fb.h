@@ -140,8 +140,6 @@ struct msm_fb_data_type {
 	int (*do_histogram) (struct fb_info *info,
 			      struct mdp_histogram_data *hist);
 	void (*vsync_ctrl) (int enable);
-	void (*vsync_init) (int cndx);
-	void *vsync_show;
 	void *cursor_buf;
 	void *cursor_buf_phys;
 
@@ -192,7 +190,6 @@ struct msm_fb_data_type {
 	u32 writeback_state;
 	bool writeback_active_cnt;
 	int cont_splash_done;
-	int vsync_sysfs_created;
 };
 
 struct dentry *msm_fb_get_debugfs_root(void);
@@ -226,5 +223,4 @@ int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd,
 #define INIT_IMAGE_FILE "/initlogo.rle"
 int load_565rle_image(char *filename, bool bf_supported);
 #endif
-
 #endif /* MSM_FB_H */
