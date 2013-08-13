@@ -3475,8 +3475,8 @@ mixer2_cfg:
 			goto end;
 		}
 		mdp4_mixer_stage_commit(pipe->mixer_num);
-		mdp4_mddi_dma_busy_wait(mfd);
-		mdp4_mddi_kickoff_video(mfd, pipe);
+//		mdp4_mddi_dma_busy_wait(mfd);
+//		mdp4_mddi_kickoff_video(mfd, pipe);
 	}
 
 	if (!(pipe->flags & MDP_OV_PLAY_NOWAIT))
