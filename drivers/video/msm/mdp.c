@@ -1287,6 +1287,7 @@ static void vsync_isr_handler(void)
 	vsync_cntrl.vsync_time = ktime_get();
 	schedule_work(&(vsync_cntrl.vsync_work));
 }
+#endif
 
 /* Returns < 0 on error, 0 on timeout, or > 0 on successful wait */
 int mdp_ppp_pipe_wait(void)
