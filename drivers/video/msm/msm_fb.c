@@ -1617,7 +1617,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		 */
 	id = (int *)&mfd->panel;
 
-/*	switch (mdp_rev) {
+	switch (mdp_rev) {
 	case MDP_REV_20:
 		snprintf(fix->id, sizeof(fix->id), "msmfb20_%x", (__u32) *id);
 		break;
@@ -1652,20 +1652,6 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		snprintf(fix->id, sizeof(fix->id), "msmfb0_%x", (__u32) *id);
 		break;
 	}
-*/
-#if defined(CONFIG_FB_MSM_MDP22)
-	snprintf(fix->id, sizeof(fix->id), "msmfb22_%x", (__u32) *id);
-#elif defined(CONFIG_FB_MSM_MDP30)
-	snprintf(fix->id, sizeof(fix->id), "msmfb30_%x", (__u32) *id);
-#elif defined(CONFIG_FB_MSM_MDP31)
-	snprintf(fix->id, sizeof(fix->id), "msmfb31_%x", (__u32) *id);
-#elif defined(CONFIG_FB_MSM_MDP40)
-	snprintf(fix->id, sizeof(fix->id), "msmfb40_%x", (__u32) *id);
-#elif defined(CONFIG_FB_MSM_MDP_NONE)
-	snprintf(fix->id, sizeof(fix->id), "msmfb0_%x", (__u32) *id);
-#else
-	error CONFIG_FB_MSM_MDP undefined !
-#endif
 
 	fbi->fbops = &msm_fb_ops;
 	fbi->flags = FBINFO_FLAG_DEFAULT;
