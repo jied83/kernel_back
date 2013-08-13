@@ -347,25 +347,11 @@ int mdp_lcdc_off(struct platform_device *pdev)
 void mdp_dma_lcdc_vsync_ctrl(int enable)
 {
 	unsigned long flag;
-<<<<<<< HEAD
-	int disabled_clocks;
-=======
->>>>>>> d1fe7b2... msm_fb: Handle vsync interrupt properly on MDP 3.03 targets
 	if (vsync_cntrl.vsync_irq_enabled == enable)
 		return;
 
 	spin_lock_irqsave(&mdp_spin_lock, flag);
-<<<<<<< HEAD
-	if (!enable)
-		INIT_COMPLETION(vsync_cntrl.vsync_wait);
-
 	vsync_cntrl.vsync_irq_enabled = enable;
-	if (!enable)
-		vsync_cntrl.disabled_clocks = 0;
-	disabled_clocks = vsync_cntrl.disabled_clocks;
-=======
-	vsync_cntrl.vsync_irq_enabled = enable;
->>>>>>> d1fe7b2... msm_fb: Handle vsync interrupt properly on MDP 3.03 targets
 	spin_unlock_irqrestore(&mdp_spin_lock, flag);
 
 	if (enable && disabled_clocks) {
@@ -376,13 +362,10 @@ void mdp_dma_lcdc_vsync_ctrl(int enable)
 		outp32(MDP_INTR_ENABLE, mdp_intr_mask);
 		mdp_enable_irq(MDP_VSYNC_TERM);
 		spin_unlock_irqrestore(&mdp_spin_lock, flag);
-<<<<<<< HEAD
-=======
 	} else {
 		INIT_COMPLETION(vsync_cntrl.vsync_wait);
 		wait_for_completion(&vsync_cntrl.vsync_wait);
 		mdp_disable_irq(MDP_VSYNC_TERM);
->>>>>>> d1fe7b2... msm_fb: Handle vsync interrupt properly on MDP 3.03 targets
 	}
 
 	if (vsync_cntrl.vsync_irq_enabled &&
